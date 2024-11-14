@@ -1,0 +1,10 @@
+[package]
+name = "cw1-quicksort-rust"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+
+[dependencies]
+rayon = "1.10.0"
+num = "0.4.3"
+rand = "0.8.5"
