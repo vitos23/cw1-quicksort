@@ -193,7 +193,7 @@ fn prefix_sums_down<T: Num + Copy + Send + Sync>(
 // Filter
 ///////////////////
 
-/// Возвращает кол-во подходящих элементов
+/// Параллельно отфильтровать массив по условию. Возвращает вектор с подходящими элементами.
 pub fn par_filter<T: Send + Default + Sync + Copy>(
     arr: &[T],
     condition: impl Fn(&T) -> bool + Copy + Sync,
