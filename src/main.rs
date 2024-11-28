@@ -3,7 +3,8 @@ mod sort;
 mod utils;
 
 use crate::sort::{
-    parallel_quicksort, rayon_parallel_quicksort, sequential_quicksort, simple_parallel_quicksort,
+    parallel_quicksort_3par_memcpy, parallel_quicksort_par_memcpy, parallel_quicksort_seq_memcpy,
+    rayon_parallel_quicksort, sequential_quicksort, simple_parallel_quicksort,
 };
 use crate::utils::Random;
 use rayon::prelude::ParallelSliceMut;
@@ -17,8 +18,16 @@ fn main() {
 
     bench_sort("sequential", sequential_quicksort);
     bench_sort(
-        "parallel (with polylog span and handmade primitives)",
-        parallel_quicksort,
+        "parallel (with polylog span and handmade primitives, sequential memcpy)",
+        parallel_quicksort_seq_memcpy,
+    );
+    bench_sort(
+        "parallel (with polylog span and handmade primitives, 3-parallel memcpy)",
+        parallel_quicksort_3par_memcpy,
+    );
+    bench_sort(
+        "parallel (with truly polylog span and handmade primitives, parallel memcpy)",
+        parallel_quicksort_par_memcpy,
     );
     bench_sort("parallel (rayon primitives)", rayon_parallel_quicksort);
     bench_sort(

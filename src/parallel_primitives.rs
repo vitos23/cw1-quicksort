@@ -27,6 +27,32 @@ fn par_for_helper<T: Send>(arr: &mut [T], l: usize, action: impl Fn(usize, &mut 
     );
 }
 
+pub fn blocked_for<T: Send, const BLOCK_SIZE: usize>(
+    arr: &mut [T],
+    action: impl Fn(usize, &mut [T]) + Copy + Sync,
+) {
+    blocked_for_helper::<T, BLOCK_SIZE>(arr, 0, arr.len().div_ceil(SCAN_BLOCK_SIZE), action);
+}
+
+fn blocked_for_helper<T: Send, const BLOCK_SIZE: usize>(
+    arr: &mut [T],
+    block_left: usize,
+    block_right: usize,
+    action: impl Fn(usize, &mut [T]) + Copy + Sync,
+) {
+    if arr.len() <= BLOCK_SIZE {
+        action(block_left, arr);
+        return;
+    }
+    let m = (block_left + block_right) / 2;
+    let split_point = (m - block_left) * BLOCK_SIZE;
+    let (arr_left, arr_right) = arr.split_at_mut(split_point);
+    rayon::join(
+        || blocked_for_helper::<T, BLOCK_SIZE>(arr_left, block_left, m, action),
+        || blocked_for_helper::<T, BLOCK_SIZE>(arr_right, m, block_right, action),
+    );
+}
+
 ///////////////////
 // Map
 ///////////////////
@@ -85,7 +111,7 @@ pub fn par_inline_prefix_sums<T: Num + Copy + Send + Sync>(arr: &mut [T]) {
 
     // Считаем суммы внутри блоков
     let block_sums_unsafe_slice = UnsafeSlice::new(&mut block_sums);
-    blocked_for_helper(arr, 0, block_count, |block_num, block| unsafe {
+    blocked_for::<_, SCAN_BLOCK_SIZE>(arr, |block_num, block| unsafe {
         block_sums_unsafe_slice.write(block_num, inline_pref_sums(block));
     });
 
@@ -98,29 +124,10 @@ pub fn par_inline_prefix_sums<T: Num + Copy + Send + Sync>(arr: &mut [T]) {
     // Наконец, окончательно вычисляем префиксные суммы,
     // добавляя к суммам внутри блоков префиксные суммы по блокам
     let block_sums_ref: &[T] = &block_sums;
-    blocked_for_helper(arr, 0, block_count, |block_num, block| {
+    blocked_for::<_, SCAN_BLOCK_SIZE>(arr, |block_num, block| {
         let prev_sum = block_sums_ref[block_num];
         block.iter_mut().for_each(|el| *el = *el + prev_sum);
     });
-}
-
-fn blocked_for_helper<T: Send>(
-    arr: &mut [T],
-    block_left: usize,
-    block_right: usize,
-    action: impl Fn(usize, &mut [T]) + Copy + Sync,
-) {
-    if arr.len() <= SCAN_BLOCK_SIZE {
-        action(block_left, arr);
-        return;
-    }
-    let m = (block_left + block_right) / 2;
-    let split_point = (m - block_left) * SCAN_BLOCK_SIZE;
-    let (arr_left, arr_right) = arr.split_at_mut(split_point);
-    rayon::join(
-        || blocked_for_helper(arr_left, block_left, m, action),
-        || blocked_for_helper(arr_right, m, block_right, action),
-    );
 }
 
 /// Последовательно посчитать невключительные префиксные суммы.
